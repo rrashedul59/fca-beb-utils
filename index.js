@@ -215,7 +215,7 @@ class LianeAPI {
   constructor(id, username = "unregistered") {
     this.id = id;
     this.username = username;
-    this.url = `https://lianeapi.onrender.com/api`;
+    this.url = `https://lianeapi.onrender.com`;
   }
   async ask(entryQuestion, key = "message") {
     const question = String(entryQuestion);

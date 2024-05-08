@@ -1,6 +1,6 @@
 {
   "name": "fca-liane-utils",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "This is not an actual Facebook Chat API, instead, this is a utility that contains functions that allows users to abstract fca-related functions.",
   "main": "index.js",
   "exports": {
@@ -12,15 +12,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "Map",
-    "JSON",
-    "file",
-    "data",
-    "storage",
-    "serialization",
-    "persistence"
-  ],
+  "keywords": [],
   "author": "Liane Cagara",
   "license": "ISC",
   "dependencies": {
