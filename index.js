@@ -1,3 +1,23 @@
+const Filter = require("bad-words");
+const filter = new Filter();
+const axios = require("axios");
+
+function censor(text, addon = []) {
+  const customFilter = new Filter({ list: addon.concat(filter.list) });
+
+  const words = text.split(/\s+/);
+  const censoredText = words.map((word) => {
+    if (customFilter.isProfane(word)) {
+      const firstLetter = word.charAt(0);
+      const censoredWord = firstLetter + "_".repeat(word.length - 1);
+      return censoredWord;
+    } else {
+      return word;
+    }
+  });
+  return censoredText.join(" ");
+}
+
 class Box {
   /**
    * Creates an instance of MessengerAPI.
@@ -5,10 +25,70 @@ class Box {
    * @param {object} api - The Facebook Messenger API instance.
    * @param {object} event - The event object containing message details.
    */
-  constructor(api, event) {
+  constructor(api, event, autocensor = true) {
     this.api = api;
     this.event = event;
     this.lastID = null;
+    this.autocensor = !!autocensor;
+  }
+  static create(...args) {
+    return new Box(...args);
+  }
+  static fetch(api, event, ...args) {
+    return new Box(api, event).fetch(...args);
+  }
+  async fetch(entryUrl, entryOptions = {}) {
+    const defaultOptions = {
+      ignoreError: true,
+      key: null,
+      wait: "⏳",
+      done: "✅",
+      asking: `⏳ | Please wait for my response...`,
+      callback() {},
+      errorText(err) {
+        return `❌ ${err.message}\nThis could mean that a server is not available or unable to respond with your api request, please wait until the issue resolves automatically.`;
+      },
+      process(text) {
+        return text;
+      },
+      axios: {
+        params: {},
+      },
+      query: {},
+      noEdit: false,
+    };
+    const options = { ...defaultOptions, ...entryOptions };
+    let url = String(entryUrl).replace(/ /g, "");
+    Object.assign(options.axios.params, options.query);
+    let info = null;
+    if (this.api.editMessage && !noEdit) {
+      info = await this.reply(`${options.asking}`);
+    }
+    try {
+      this.react(options.wait);
+      const response = await axios.get(url, options.axios);
+      let answer = "";
+      if (options.key) {
+        answer = String(response.data[options.key]);
+      } else {
+        answer = String(response.data);
+      }
+      answer = options.process(answer);
+      if (!answer) {
+        throw new Error("The server didn't answered your request.");
+      }
+      this.react(options.done);
+      if (!info) {
+        await this.reply(answer);
+        return true;
+      }
+      return this.edit(answer, info.messageID);
+    } catch (err) {
+      if (options.ignoreError) {
+        return this.reply(options.errorText(err));
+      }
+      throw err;
+    }
   }
   /**
    * Sends a reply message to the specified thread.
@@ -17,10 +97,18 @@ class Box {
    * @param {function} [callback] - Optional callback function to execute after sending the message.
    * @returns {Promise<object>} - A promise resolving to the message info.
    */
+  #censor(form) {
+    const msg = extractFormBody(form);
+    if (!this.autocensor) {
+      return msg;
+    }
+    msg.body = censor(msg.body);
+    return msg;
+  }
   reply(msg, thread, callback) {
     return new Promise((r) => {
       this.api.sendMessage(
-        msg,
+        this.#censor(msg),
         thread || this.event.threadID,
         async (err, info) => {
           if (typeof callback === "function") {
@@ -42,7 +130,7 @@ class Box {
   send(msg, thread, callback) {
     return new Promise((r) => {
       this.api.sendMessage(
-        msg,
+        this.#censor(msg),
         thread || this.event.threadID,
         async (err, info) => {
           if (typeof callback === "function") {
@@ -86,15 +174,103 @@ class Box {
    */
   edit(msg, id, callback) {
     return new Promise((r) => {
-      this.api.editMessage(msg, id || this.lastID, async (err, ...args) => {
-        if (typeof callback === "function") {
-          await callback(err, ...args);
-        }
-        r(true);
-      });
+      this.api.editMessage(
+        this.#censor(msg).body,
+        id || this.lastID,
+        async (err, ...args) => {
+          if (typeof callback === "function") {
+            await callback(err, ...args);
+          }
+          r(true);
+        },
+      );
     });
   }
 }
 
+function extractFormBody(msg) {
+  if (typeof msg === "string") {
+    return { body: msg };
+  } else if (typeof msg === "object") {
+    return { ...msg };
+  } else {
+    return { body: String(msg) };
+  }
+}
 
-module.exports = { Box };
+function argCheck(entryArgs, strict, mainDegree) {
+  const args = [...entryArgs];
+  return function check(entryKey, degree = mainDegree) {
+    const key = String(entryKey);
+    if (strict && args[degree] !== key) {
+      return false;
+    }
+    if (args[degree]?.toLowerCase === key.toLowerCase) {
+      return true;
+    }
+  };
+}
+
+class Goatly {
+  constructor({ global: myGlobal, context = {} }) {
+    this.global = myGlobal;
+    this.context = context;
+    this.box = null;
+    if (context.api && context.event) {
+      this.box = new Box(context.api, context.event, true);
+    }
+  }
+  setReply(key, { name = context.commandName, ...options }) {
+    this.global.GoatBot.onReply.set(key, { commandName: name, ...options });
+    return true;
+  }
+  delReply(key) {
+    this.global.GoatBot.onReply.delete(key);
+    return true;
+  }
+  async replySet(form, { name = context.commandName, ...options }) {
+    if (!this.box) {
+      throw new Error("No box");
+    }
+    const info = await box.reply(form);
+    this.global.GoatBot.onReply.set(info.messageID, {
+      commandName: name,
+      ...options,
+    });
+  }
+  static noPrefix(moduleData, global) {
+    return new Goatly({ global }).noPrefix(moduleData);
+  }
+  async noPrefix(moduleData) {
+    const { global } = this;
+    const { prefix } = global.GoatBot.config;
+    const onStartBackup = moduleData.onStart.bind(moduleData);
+    moduleData.config.author = `${moduleData.config.author} || Liane (noPrefix)`;
+    moduleData.onStart = async function () {};
+    const { name } = moduleData.config;
+    moduleData.onChat = async function ({ ...context }) {
+      const { event } = context;
+      event.body = event.body || "";
+      let willApply = false;
+      let [commandName, ...args] = event.body.split(" ").filter(Boolean);
+      if (!commandName) {
+        return;
+      }
+      if (commandName.startsWith(prefix)) {
+        commandName = commandName.replace(prefix, "");
+      }
+
+      if (commandName.toLowerCase() === name.toLowerCase()) {
+        willApply = true;
+      }
+      context.args = args;
+      if (!willApply) {
+        return;
+      }
+      await onStartBackup(context);
+    };
+    return moduleData;
+  }
+}
+
+module.exports = { Box, censor, extractFormBody, argCheck, Goatly };
