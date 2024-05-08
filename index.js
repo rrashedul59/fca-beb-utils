@@ -211,6 +211,30 @@ function argCheck(entryArgs, strict, mainDegree) {
   };
 }
 
+class LianeAPI {
+  constructor(id, username = "unregistered") {
+    this.id = id;
+    this.username = username;
+    this.url = `https://lianeapi.onrender.com/api`;
+  }
+  async ask(entryQuestion, key = "message") {
+    const question = String(entryQuestion);
+    const response = await axios.get(
+      `${this.url}/@${this.username}/api/${this.id}`,
+      {
+        params: {
+          query: question,
+        },
+      },
+    );
+    return response.data[key];
+  }
+  static async aiInfos() {
+    const response = await axios.get(`${this.url}/api/myai?type=all&c=only`);
+    return response.data;
+  }
+}
+
 class Goatly {
   constructor({ global: myGlobal, context = {} }) {
     this.global = myGlobal;
@@ -273,4 +297,4 @@ class Goatly {
   }
 }
 
-module.exports = { Box, censor, extractFormBody, argCheck, Goatly };
+module.exports = { Box, censor, extractFormBody, argCheck, Goatly, LianeAPI };
