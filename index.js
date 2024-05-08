@@ -61,7 +61,7 @@ class Box {
     let url = String(entryUrl).replace(/ /g, "");
     Object.assign(options.axios.params, options.query);
     let info = null;
-    if (this.api.editMessage && !noEdit) {
+    if (this.api.editMessage && !options.noEdit) {
       info = await this.reply(`${options.asking}`);
     }
     try {
@@ -256,7 +256,7 @@ class Goatly {
     if (!this.box) {
       throw new Error("No box");
     }
-    const info = await box.reply(form);
+    const info = await this.box.reply(form);
     this.global.GoatBot.onReply.set(info.messageID, {
       commandName: name,
       ...options,
