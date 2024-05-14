@@ -296,5 +296,223 @@ class Goatly {
     return moduleData;
   }
 }
+function objIndex(obj, index) {
+  const i = parseInt(index);
+  if (isNaN(i)) {
+    return obj[index];
+  }
+  return obj[Object.keys(obj)[i]] || obj[i];
+}
 
-module.exports = { Box, censor, extractFormBody, argCheck, Goatly, LianeAPI };
+function delay(ms = 500) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+class ObjectPlus extends Object {
+  constructor(...args) {
+    super(...args);
+  }
+  typer(types) {
+    ObjectPlus.typer(this.clean(), types);
+  }
+  clean() {
+    return ObjectPlus.clean(this);
+  }
+  static clean(obj) {
+    ObjectPlus.typer({ obj }, { obj: "object" });
+    let result = {};
+    Object.keys(obj).forEach((key) => {
+      result[key] = obj[key];
+    });
+    return result;
+  }
+  static typer(obj, types) {
+    let result = "";
+
+    if (typeof obj !== "object" || obj === null) {
+      throw new TypeError(
+        "First argument (obj) must be a non-null object, got " + typeof obj,
+      );
+    }
+
+    for (const [key, expectedType] of Object.entries(types)) {
+      const value = obj[key];
+      if (
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        typeof expectedType === "object" &&
+        value &&
+        !Array.isArray(expectedType) &&
+        expectedType
+      ) {
+        typer(value, expectedType);
+        continue;
+      }
+      const expectedTypes = expectedType
+        .toString()
+        .split("|")
+        .map((type) => type.trim());
+
+      let isValid = false;
+
+      for (const checkType of expectedTypes) {
+        if (checkType === "null" && value === null) {
+          isValid = true;
+          break;
+        }
+        if (checkType.endsWith("?") && (value === null || value === undefined)) {
+          isValid = true;
+          break;
+        }
+        if (checkType.startsWith("@")) {
+          if (value?.constructor?.name === checkType.slice(1)) {
+            isValid = true;
+            break;
+          }
+        } else {
+          if (typeof value === checkType) {
+            isValid = true;
+            break;
+          }
+        }
+      }
+
+      if (!isValid) {
+        const expectedTypeString = expectedTypes.join(" or ");
+        const actualTypeString =
+          value === null
+            ? "null"
+            : typeof value === "object"
+              ? value.constructor?.name
+              : typeof value;
+        result += `Property '${key}' expected type ${expectedTypeString}, got ${actualTypeString}\n`;
+      }
+    }
+
+    if (result.length > 0) {
+      throw new TypeError(result);
+    }
+  }
+  static reversify(obj) {
+    ObjectPlus.typer({ obj }, { obj: "object" });
+    const result = {};
+    for (const key of Object.keys(obj).reverse()) {
+      result[key] = obj[key];
+    }
+    return result;
+  }
+  deepMerge(...objs) {
+    return ObjectPlus.deepMerge(this, ...objs);
+  }
+  static deepMerge(...objs) {
+    const result = {};
+    for (const obj of objs) {
+      ObjectPlus.typer({ obj }, { obj: "object" });
+      for (const [key, value] of Object.entries(obj)) {
+        if (typeof value === "object" || Array.isArray(value)) {
+          result[key] = ObjectPlus.deepMerge(result[key] || {}, value);
+        } else {
+          result[key] = value;
+        }
+      }
+    }
+    return result;
+  }
+  indexAtKey(key) {
+    return ObjectPlus.indexAtKey(this, key);
+  }
+  static indexAtKey(obj, key) {
+    ObjectPlus.typer({ obj, index }, { obj: "object", index: "string" });
+    return Object.keys(obj).indexOf(key);
+  }
+  keyAtIndex(index) {
+    return ObjectPlus.keyAtIndex(this, index);
+  }
+  static keyAtIndex(obj, index) {
+    ObjectPlus.typer({ obj, index }, { obj: "object", index: "number|string" });
+    const keys = Object.keys(obj);
+    if (isNaN(parseInt(index))) {
+      throw new TypeError(
+        "Second argument (index) must be a number, got " + parseInt(index),
+      );
+    }
+    return keys[parseInt(index)];
+  }
+  atIndex(index) {
+    return ObjectPlus.atIndex(this, index);
+  }
+  static atIndex(obj, index) {
+    ObjectPlus.typer({ obj, index }, { obj: "object", index: "number|string" });
+    const keys = Object.keys(obj);
+    if (isNaN(parseInt(index))) {
+      throw new TypeError(
+        "Second argument (index) must be a number, got " + parseInt(index),
+      );
+    }
+    return obj[keys[parseInt(index)]];
+  }
+  static iterate(obj, callback) {
+    ObjectPlus.typer(
+      { obj, callback },
+      { obj: "object", callback: "function" },
+    );
+    for (const key in obj) {
+      callback(key, obj[key]);
+    }
+  }
+  iterate(callback) {
+    ObjectPlus.iterate(this, callback);
+  }
+  mapValues(callback) {
+    return ObjectPlus.mapValues(this, callback);
+  }
+  static mapValues({ ...obj }, callback) {
+    ObjectPlus.typer(
+      { obj, callback },
+      { obj: "object", callback: "function" },
+    );
+    for (const key in obj) {
+      obj[key] = callback(key, obj[key]);
+    }
+    return obj;
+  }
+  mapKeys(callback) {
+    return ObjectPlus.mapKeys(this, callback);
+  }
+  static mapKeys({ ...obj }, callback) {
+    ObjectPlus.typer(
+      { obj, callback },
+      { obj: "object", callback: "function" },
+    );
+    for (const key in obj) {
+      obj[callback(key, obj[key])] = obj[key];
+      delete obj[key];
+    }
+    return obj;
+  }
+  static excludeKey({ ...obj }, ...keys) {
+    ObjectPlus.typer(
+      { obj },
+      { obj: "object" }
+    );
+    for (const key of keys) {
+      delete obj[key];
+    }
+    return obj;
+  }
+  excludeKey(...keys) {
+    return ObjectPlus.deleteKey(this, ...keys);
+  }
+}
+
+module.exports = {
+  Box,
+  censor,
+  extractFormBody,
+  argCheck,
+  Goatly,
+  LianeAPI,
+  delay,
+  objIndex,
+  ObjectPlus,
+};
