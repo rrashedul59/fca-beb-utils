@@ -2,10 +2,47 @@ const Filter = require("bad-words");
 const filter = new Filter();
 const axios = require("axios");
 
+class LianeAPI {
+  constructor(id, username) {
+    this.id = id;
+    this.username = username || "unregistered";
+    this.url = `https://liaspark.chatbotcommunity.ltd`;
+  }
+  async ask(entryQuestion, key = "message") {
+    const question = String(entryQuestion);
+    const response = await axios.get(
+      `${this.url}/@${this.username}/api/${this.id}`,
+      {
+        params: {
+          query: question,
+        },
+      },
+    );
+    return response.data[key];
+  }
+  static async aiInfos() {
+    const response = await axios.get(`${this.url}/api/myai?type=all&c=only`);
+    return response.data;
+  }
+  url() {
+    return `${this.url}/@${this.username}/api/${this.id}`;
+  }
+  rawUrl(type) {
+    return `${this.url}/raw/${this.username}@${this.id}?type=${type || "botpack"}`;
+  }
+  static url(id, username) {
+    return new LianeAPI(id, username).url();
+  }
+  async raw(type) {
+    const { data } = await axios.get(this.rawUrl(type));
+    return String(data);
+  }
+}
+
 function censor(text, addon = []) {
   const customFilter = new Filter({ list: addon.concat(filter.list) });
 
-  const words = text.split(/\s+/);
+  const words = text.split(" ");
   const censoredText = words.map((word) => {
     if (customFilter.isProfane(word)) {
       const firstLetter = word.charAt(0);
@@ -37,6 +74,14 @@ class Box {
   static fetch(api, event, ...args) {
     return new Box(api, event).fetch(...args);
   }
+  async lianeAPI(id, username, options = {}) {
+    const ai = new LianeAPI(id, username);
+    return this.fetch(ai.url(), {
+      key: "message",
+      noEdit: true,
+      ...options,
+    });
+  }
   async fetch(entryUrl, entryOptions = {}) {
     const defaultOptions = {
       ignoreError: true,
@@ -61,7 +106,7 @@ class Box {
     let url = String(entryUrl).replace(/ /g, "");
     Object.assign(options.axios.params, options.query);
     let info = null;
-    if (this.api.editMessage && !options.noEdit) {
+    if (typeof this.api.editMessage === "function" && !options.noEdit) {
       info = await this.reply(`${options.asking}`);
     }
     try {
@@ -111,6 +156,10 @@ class Box {
         this.#censor(msg),
         thread || this.event.threadID,
         async (err, info) => {
+          if (err) {
+            await this.reply(`❌ ${JSON.stringify(err)}`);
+          }
+
           if (typeof callback === "function") {
             await callback(err, info);
           }
@@ -133,6 +182,10 @@ class Box {
         this.#censor(msg),
         thread || this.event.threadID,
         async (err, info) => {
+          if (err) {
+            await this.reply(`❌ ${JSON.stringify(err)}`);
+          }
+
           if (typeof callback === "function") {
             await callback(err, info);
           }
@@ -209,30 +262,6 @@ function argCheck(entryArgs, strict, mainDegree) {
       return true;
     }
   };
-}
-
-class LianeAPI {
-  constructor(id, username = "unregistered") {
-    this.id = id;
-    this.username = username;
-    this.url = `https://lianeapi.onrender.com`;
-  }
-  async ask(entryQuestion, key = "message") {
-    const question = String(entryQuestion);
-    const response = await axios.get(
-      `${this.url}/@${this.username}/api/${this.id}`,
-      {
-        params: {
-          query: question,
-        },
-      },
-    );
-    return response.data[key];
-  }
-  static async aiInfos() {
-    const response = await axios.get(`${this.url}/api/myai?type=all&c=only`);
-    return response.data;
-  }
 }
 
 class Goatly {
@@ -360,7 +389,10 @@ class ObjectPlus extends Object {
           isValid = true;
           break;
         }
-        if (checkType.endsWith("?") && (value === null || value === undefined)) {
+        if (
+          checkType.endsWith("?") &&
+          (value === null || value === undefined)
+        ) {
           isValid = true;
           break;
         }
@@ -491,10 +523,7 @@ class ObjectPlus extends Object {
     return obj;
   }
   static excludeKey({ ...obj }, ...keys) {
-    ObjectPlus.typer(
-      { obj },
-      { obj: "object" }
-    );
+    ObjectPlus.typer({ obj }, { obj: "object" });
     for (const key of keys) {
       delete obj[key];
     }

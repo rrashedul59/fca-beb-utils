@@ -1,6 +1,6 @@
 {
   "name": "fca-liane-utils",
-  "version": "1.0.1",
+  "version": "1.1.5",
   "description": "This is not an actual Facebook Chat API, instead, this is a utility that contains functions that allows users to abstract fca-related functions.",
   "main": "index.js",
   "exports": {
