@@ -534,6 +534,73 @@ class ObjectPlus extends Object {
   }
 }
 
+class Toggle {
+  constructor() {
+    this.offStates = {};
+    this.funcs = {};
+  }
+  on(key, callback = function () {}) {
+    if (key in this.offStates) {
+      delete this.offStates[key];
+      return callback(this.offStates);
+    }
+  }
+  off(key, callback = function () {}) {
+    this.offStates[key] = true;
+    return callback(this.offStates);
+  }
+  test(key, callback = function () {}) {
+    if (!this.offStates[key]) {
+      callback(this.offStates);
+      return true;
+    }
+    return false;
+  }
+  async testAsync(key, callback = async function () {}) {
+    if (!this.offStates[key]) {
+      await callback(this.offStates);
+      return true;
+    }
+    return false;
+  }
+  setSpawn(key, func) {
+    if (!this.funcs[key]) {
+      this.funcs[key] = [];
+    }
+    this.funcs[key].push(func);
+  }
+  async spawn(key, delay = 0) {
+    if (delay) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    let returns = [];
+    if (this.funcs[key] && !this.offStates[key]) {
+      for (const func of this.funcs[key]) {
+        returns.push(await func());
+      }
+    }
+    return returns;
+  }
+  isFree(key) {
+    return !!this.funcs[key];
+  }
+  swap(key) {
+    if (!this.test(key)) {
+      this.on(key);
+    } else if (this.test(key)) {
+      this.off(key);
+    }
+    return this.test(key);
+  }
+  nextFree() {
+    let num = 0;
+    while (this.funcs[num]) {
+      num++;
+    }
+    return num;
+  }
+}
+
 module.exports = {
   Box,
   censor,
@@ -544,4 +611,5 @@ module.exports = {
   delay,
   objIndex,
   ObjectPlus,
+  Toggle
 };
