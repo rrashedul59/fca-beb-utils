@@ -82,6 +82,24 @@ class Box {
       ...options,
     });
   }
+  async onArg(degree, value, callback = async function(){}) {
+    const { args } = this;
+    let will = false;
+    if (args[degree] && args[degree] === value) {
+      will = true;
+    } else if (args[degree] && args[degree].toLowerCase() === value.toLowerCase()) {
+      will = true;
+    }
+    if (!will) {
+      return false;
+    }
+    return await callback(args[degree]);
+  }
+  get args() {
+    const { event } = this;
+    const [, ...args] = event.body.split(" ").filter(Boolean);
+    return args;
+  }
   async fetch(entryUrl, entryOptions = {}) {
     const defaultOptions = {
       ignoreError: true,

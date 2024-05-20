@@ -203,6 +203,45 @@ box.edit('Updated message content').then(success => {
 **Usage:** 
 This method is used internally within the class and is not intended for direct usage.
 
+## New Methods
+
+### `async onArg(degree, value, callback = async function() {})`
+
+**Description:** Checks if a specified argument (by degree) matches a given value, and if so, executes a callback function.
+
+**Parameters:**
+- `degree` (number): The position of the argument to check.
+- `value` (string): The value to compare the argument against.
+- `callback` (function, optional): The callback function to execute if the argument matches the value. Defaults to an empty asynchronous function.
+
+**Returns:** 
+- A promise resolving to `false` if the argument does not match the value.
+- The result of the callback function if the argument matches the value.
+
+**Usage:**
+```javascript
+const box = new Box(api, event);
+await box.onArg(0, 'start', async (arg) => {
+  console.log(`Argument matched: ${arg}`);
+  // Perform some action here
+  // Optional .then()
+});
+```
+
+### `get args()`
+
+**Description:** Retrieves the arguments from the event body, split by spaces.
+
+**Returns:** 
+- An array of arguments derived from the event body.
+
+**Usage:**
+```javascript
+const box = new Box(api, event);
+// if event.body is '#commandName arg1 arg2 arg3'
+console.log(box.args); // ['arg1', 'arg2', 'arg3', ...]
+```
+
 ## Summary
 
 The `Box` class provides a structured way to interact with Facebook Messenger events and automate responses. The class includes methods for sending messages, reacting to messages, editing messages, and interacting with external APIs like `LianeAPI`. The following methods have been detailed:
