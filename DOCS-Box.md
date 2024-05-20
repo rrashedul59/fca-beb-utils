@@ -70,7 +70,7 @@ console.log(box instanceof Box); // true
 **Usage:**
 ```javascript
 Box.fetch(api, event, 'https://example.com/data').then(result => {
-  console.log(result); // Fetched data
+  console.log(result); // message info
 });
 ```
 
@@ -89,7 +89,7 @@ Box.fetch(api, event, 'https://example.com/data').then(result => {
 **Usage:**
 ```javascript
 const result = await box.lianeAPI('claire', 'LianeAPI_Reworks');
-console.log(result); // Response from LianeAPI
+console.log(result); // message info
 ```
 
 ### `async fetch(entryUrl, entryOptions = {})`
@@ -106,7 +106,7 @@ console.log(result); // Response from LianeAPI
 **Usage:**
 ```javascript
 box.fetch('https://example.com/data').then(result => {
-  console.log(result); // Fetched data
+  console.log(result); // message info
 });
 ```
 
