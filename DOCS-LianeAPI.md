@@ -62,7 +62,7 @@ LianeAPI.aiInfos().then(data => {
 });
 ```
 
-### `url()`
+### `apiUrl()`
 
 **Description:** Constructs the URL for the API based on the instance's `id` and `username`.
 
@@ -72,7 +72,7 @@ LianeAPI.aiInfos().then(data => {
 **Usage:**
 ```javascript
 const api = new LianeAPI("claire", "LianeAPI_Reworks");
-console.log(api.url()); // "https://liaspark.chatbotcommunity.ltd/@LianeAPI_Reworks/api/claire"
+console.log(api.apiUrl()); // "https://liaspark.chatbotcommunity.ltd/@LianeAPI_Reworks/api/claire"
 ```
 
 ### `rawUrl(type)`
@@ -91,7 +91,7 @@ const api = new LianeAPI("claire", "LianeAPI_Reworks");
 console.log(api.rawUrl("data")); // "https://liaspark.chatbotcommunity.ltd/raw/LianeAPI_Reworks@claire?type=data"
 ```
 
-### `static url(id, username)`
+### `static apiUrl(id, username)`
 
 **Description:** Constructs the URL for the API based on the provided `id` and `username`.
 
@@ -104,7 +104,7 @@ console.log(api.rawUrl("data")); // "https://liaspark.chatbotcommunity.ltd/raw/L
 
 **Usage:**
 ```javascript
-console.log(LianeAPI.url("claire", "LianeAPI_Reworks")); // "https://liaspark.chatbotcommunity.ltd/@LianeAPI_Reworks/api/claire"
+console.log(LianeAPI.apiUrl("claire", "LianeAPI_Reworks")); // "https://liaspark.chatbotcommunity.ltd/@LianeAPI_Reworks/api/claire"
 ```
 
 ### `async raw(type)`
@@ -132,9 +132,9 @@ The `LianeAPI` class provides a structured way to interact with the Liane chatbo
 1. `constructor(id, username)`
 2. `async ask(entryQuestion, key = "message")`
 3. `static async aiInfos()`
-4. `url()`
+4. `apiUrl()`
 5. `rawUrl(type)`
-6. `static url(id, username)`
+6. `static apiUrl(id, username)`
 7. `async raw(type)`
 
 These methods enable developers to easily integrate with the Liane chatbot API and retrieve the necessary data for their applications.

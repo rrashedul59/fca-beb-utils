@@ -24,14 +24,14 @@ class LianeAPI {
     const response = await axios.get(`${this.url}/api/myai?type=all&c=only`);
     return response.data;
   }
-  url() {
+  apiUrl() {
     return `${this.url}/@${this.username}/api/${this.id}`;
   }
   rawUrl(type) {
     return `${this.url}/raw/${this.username}@${this.id}?type=${type || "botpack"}`;
   }
-  static url(id, username) {
-    return new LianeAPI(id, username).url();
+  static apiUrl(id, username) {
+    return new LianeAPI(id, username).apiUrl();
   }
   async raw(type) {
     const { data } = await axios.get(this.rawUrl(type));
@@ -76,7 +76,7 @@ class Box {
   }
   async lianeAPI(id, username, query, options = {}) {
     const ai = new LianeAPI(id, username);
-    return this.fetch(ai.url(), {
+    return this.fetch(ai.apiUrl(), {
       key: "message",
       noEdit: true,
       query: {
