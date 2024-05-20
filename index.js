@@ -74,11 +74,14 @@ class Box {
   static fetch(api, event, ...args) {
     return new Box(api, event).fetch(...args);
   }
-  async lianeAPI(id, username, options = {}) {
+  async lianeAPI(id, username, query, options = {}) {
     const ai = new LianeAPI(id, username);
     return this.fetch(ai.url(), {
       key: "message",
       noEdit: true,
+      query: {
+        query,
+      },
       ...options,
     });
   }
