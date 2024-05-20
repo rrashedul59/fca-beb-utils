@@ -82,16 +82,22 @@ class Box {
       ...options,
     });
   }
-  async onArg(degree, value, callback = async function(){}) {
+  async onArg(degree, value, callback) {
     const { args } = this;
     let will = false;
     if (args[degree] && args[degree] === value) {
       will = true;
-    } else if (args[degree] && args[degree].toLowerCase() === value.toLowerCase()) {
+    } else if (
+      args[degree] &&
+      args[degree].toLowerCase() === value.toLowerCase()
+    ) {
       will = true;
     }
     if (!will) {
       return false;
+    }
+    if (!callback) {
+      return true;
     }
     return await callback(args[degree]);
   }
@@ -221,6 +227,9 @@ class Box {
    * @param {function} [callback] - Optional callback function to execute after reacting.
    * @returns {Promise<boolean>} - A promise resolving to true if the reaction is successful.
    */
+  get reaction() {
+    return this.react;
+  }
   react(emoji, id, callback) {
     return new Promise((r) => {
       this.api.setMessageReaction(
@@ -256,6 +265,22 @@ class Box {
         },
       );
     });
+  }
+  SyntaxError() {
+    return this.reply(
+      `⚠️ You are using the wrong syntax, please check the help menu to see how to use this command.`,
+    );
+  }
+  error(error) {
+    let message = "";
+    if (error instanceof Error) {
+      const timestamp = new Date().toUTCString();
+      const errorName = error.name;
+      message = `❌ ${errorName}\nTimestamp: ${timestamp}\n${error.stack || "No stack trace available"}`;
+    } else {
+      message = `❌ An unknown error occurred.\nTimestamp: ${timestamp}\n${JSON.stringify(error, null, 2)}`;
+    }
+    return this.reply(message);
   }
 }
 
@@ -629,5 +654,5 @@ module.exports = {
   delay,
   objIndex,
   ObjectPlus,
-  Toggle
+  Toggle,
 };

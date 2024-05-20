@@ -242,6 +242,34 @@ const box = new Box(api, event);
 console.log(box.args); // ['arg1', 'arg2', 'arg3', ...]
 ```
 
+### `SyntaxError()`
+
+**Description:** Sends a warning message when the user's input syntax is incorrect, prompting them to check the help menu for guidance.
+
+**Usage:**
+```javascript
+box.SyntaxError();
+```
+
+### `error(error)`
+
+**Description:** Handles and formats error messages, providing detailed information such as error name, timestamp, and stack trace if available. If the error is not an instance of `Error`, it will stringify the error object for display.
+
+**Parameters:**
+- `error` (Error): The error object to handle.
+
+**Returns:** 
+- A formatted error message with additional details.
+
+**Usage:**
+```javascript
+try {
+  // Some code that may throw an error
+} catch (error) {
+  box.error(error);
+}
+```
+
 ## Summary
 
 The `Box` class provides a structured way to interact with Facebook Messenger events and automate responses. The class includes methods for sending messages, reacting to messages, editing messages, and interacting with external APIs like `LianeAPI`. The following methods have been detailed:
@@ -255,6 +283,10 @@ The `Box` class provides a structured way to interact with Facebook Messenger ev
 7. `send(msg, thread, callback)`
 8. `react(emoji, id, callback)`
 9. `edit(msg, id, callback)`
+10. `async onArg(degree, value, callback = async function() {})`
+11. `get args()`
+12. `SyntaxError()`
+13. `error(error)`
 
 These methods enable developers to easily integrate with Facebook Messenger events and build sophisticated chatbot interactions using the `Box` class.
 ```
