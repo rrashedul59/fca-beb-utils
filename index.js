@@ -193,8 +193,9 @@ class Box {
           this.lastID = info?.messageID;
           r(info);
         },
+        this.event.messageID,
       );
-    }, this.event.messageID);
+    });
   }
   /**
    * Sends a message to the specified thread.
