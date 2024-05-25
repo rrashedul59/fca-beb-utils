@@ -826,7 +826,7 @@ module.exports = {
   Box,
   Rand,
   range,
-  EzFile,
+  //EzFile,
   censor,
   extractFormBody,
   argCheck,
