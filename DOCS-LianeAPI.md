@@ -48,6 +48,51 @@ api.ask("What is the weather today?").then(response => {
 });
 ```
 
+### `async request(entryQuestion, otherParams = {})`
+
+**Description:** Sends a question to the Liane API and returns the response.
+
+**Parameters:**
+- `entryQuestion` (string): The question to send to the API.
+- `otherParams` (object, optional): An additional query.
+
+**Returns:** 
+- The value associated with the specified key in the API response.
+
+**Usage:**
+```javascript
+const api = new LianeAPI("claire", "LianeAPI_Reworks");
+api.request("What is the weather today?").then(response => {
+  console.log(response.message); // Expected response from the API
+  /*
+{
+  "query": "what is the weather today?",
+  "message": "✨ 𝗖𝗹𝗮𝗶𝗿𝗲 𝖡𝖾𝗍𝖺\n━━━━━━━━━━━━━━━\n➤ 📝 𝗜𝗻𝘁𝗿𝗼𝗱𝘂𝗰𝘁𝗶𝗼𝗻:\nWelcome to the weather update by Claire, maintained diligently by the talented Liane Cagara. Let's dive into the details you seek.\n\n➤ 🔎 𝗔𝗻𝗮𝗹𝘆𝘀𝗶𝘀:\nAnalyzing the current weather information for you with precision and accuracy.\n\n➤ ✅ 𝗔𝗻𝘀𝘄𝗲𝗿:\nToday's weather forecast is sunny with clear skies and a high of 75°F.\n\n➤ 🌇 𝗕𝗮𝗰𝗸𝗴𝗿𝗼𝘂𝗻𝗱 𝗜𝗻𝗳𝗼𝗿𝗺𝗮𝘁𝗶𝗼𝗻:\nThe data is sourced from reliable meteorological services to ensure up-to-date and reliable information.\n\n➤ ✅ 𝗙𝘂𝗻 𝗙𝗮𝗰𝘁:\nDid you know that the term \"weather\" is derived from an Old English word meaning \"wind and air?\"\n\n➤ 👑 𝗧𝗵𝗮𝗻𝗸 𝗟𝗶𝗮𝗻𝗲 𝗖𝗮𝗴𝗮𝗿𝗮:\nA big thank you to Liane Cagara for her dedication to developing and maintaining Claire for providing this weather report.",
+  "raw": "➤ 📝 𝗜𝗻𝘁𝗿𝗼𝗱𝘂𝗰𝘁𝗶𝗼𝗻:\nWelcome to the weather update by Claire, maintained diligently by the talented Liane Cagara. Let's dive into the details you seek.\n\n➤ 🔎 𝗔𝗻𝗮𝗹𝘆𝘀𝗶𝘀:\nAnalyzing the current weather information for you with precision and accuracy.\n\n➤ ✅ 𝗔𝗻𝘀𝘄𝗲𝗿:\nToday's weather forecast is sunny with clear skies and a high of 75°F.\n\n➤ 🌇 𝗕𝗮𝗰𝗸𝗴𝗿𝗼𝘂𝗻𝗱 𝗜𝗻𝗳𝗼𝗿𝗺𝗮𝘁𝗶𝗼𝗻:\nThe data is sourced from reliable meteorological services to ensure up-to-date and reliable information.\n\n➤ ✅ 𝗙𝘂𝗻 𝗙𝗮𝗰𝘁:\nDid you know that the term \"weather\" is derived from an Old English word meaning \"wind and air?\"\n\n➤ 👑 𝗧𝗵𝗮𝗻𝗸 𝗟𝗶𝗮𝗻𝗲 𝗖𝗮𝗴𝗮𝗿𝗮:\nA big thank you to Liane Cagara for her dedication to developing and maintaining Claire for providing this weather report.",
+  "stat": {
+    "status": 200,
+    "ms": 6318,
+    "timeStart": 1716619482128,
+    "timeEnd": 1716619488446
+  },
+  "share": {
+    "apiUrl": "https://liaspark.chatbotcommunity.ltd/@LianeAPI_Reworks/api/claire",
+    "coverUrl": "https://liaspark.chatbotcommunity.ltd/myai?type=cover&u=LianeAPI_Reworks&id=claire"
+  },
+  "AI": {
+    "model": "gpt-4",
+    "provider": "GPT"
+  },
+  "meta": {
+    "username": "LianeAPI_Reworks",
+    "id": "claire"
+  },
+  "letter": "Thanks for using LiaSpark! 💗"
+}
+  */
+});
+```
+
 ### `static async aiInfos()`
 
 **Description:** Retrieves AI information from the API.
