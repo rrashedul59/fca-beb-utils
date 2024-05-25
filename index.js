@@ -154,11 +154,11 @@ class Box {
       const response = await axios.get(url, options.axios);
       let answer = "";
       if (options.key) {
-        answer = String(response.data[options.key]);
+        answer = response.data[options.key];
       } else {
-        answer = String(response.data);
+        answer = response.data;
       }
-      answer = options.process(answer);
+      answer = String(options.process(answer));
       if (!answer) {
         throw new Error("The server didn't answered your request.");
       }
@@ -325,7 +325,7 @@ function argCheck(entryArgs, strict, mainDegree) {
 }
 
 class Goatly {
-  constructor({ global: myGlobal, context = {} }) {
+  constructor({ global: myGlobal = global, context = {} }) {
     this.global = myGlobal;
     this.context = context;
     this.box = null;
@@ -351,19 +351,31 @@ class Goatly {
       ...options,
     });
   }
-  static noPrefix(moduleData, global) {
-    return new Goatly({ global }).noPrefix(moduleData);
+  static noPrefix(moduleData, global, options) {
+    return new Goatly({ global }).noPrefix(moduleData, options);
   }
-  async noPrefix(moduleData) {
+  async noPrefix(moduleData, options) {
+    options ??= {
+      allowPrefix: false,
+      disableOnChat: false,
+    };
     const { global } = this;
     const { prefix } = global.GoatBot.config;
     const onStartBackup = moduleData.onStart.bind(moduleData);
+    const onChatBackup = moduleData.onChat.bind(moduleData);
     moduleData.config.author = `${moduleData.config.author} || Liane (noPrefix)`;
     moduleData.onStart = async function () {};
     const { name } = moduleData.config;
     moduleData.onChat = async function ({ ...context }) {
       const { event } = context;
       event.body = event.body || "";
+      if (!options.disableOnChat) {
+        try {
+          await onChatBackup({ ...context });
+        } catch (error) {
+          console.log(error);
+        }
+      }
       let willApply = false;
       let [commandName, ...args] = event.body.split(" ").filter(Boolean);
       if (!commandName) {
@@ -371,19 +383,102 @@ class Goatly {
       }
       if (commandName.startsWith(prefix)) {
         commandName = commandName.replace(prefix, "");
+      } else if (
+        options.allowPrefix === false &&
+        commandName.toLowerCase() === name.toLowerCase()
+      ) {
+        return context.message.reply(
+          `❌ | The command "${commandName}" cannot be used with the prefix "${prefix}"`,
+        );
       }
 
       if (commandName.toLowerCase() === name.toLowerCase()) {
         willApply = true;
       }
-      context.args = args;
       if (!willApply) {
         return;
       }
-      await onStartBackup(context);
+      await onStartBackup({ ...context, args, commandName });
     };
     return moduleData;
   }
+  makeOnStart(options) {
+    if (typeof options !== "object") {
+      throw new Error("options must be an object");
+    }
+    const defaultOptions = {};
+    options = { ...defaultOptions, ...options };
+    async function handler(context) {
+      const box = new Box(context.api, context.event, true);
+      context.box = box;
+      async function executer(options) {
+        if (options.script) {
+          await options.script(context);
+        }
+        const { message } = context;
+        if (options.reply) {
+          await message.reply(options.reply);
+        }
+        if (options.reaction) {
+          await message.reaction(options.reaction);
+        }
+        if (typeof options.apiCmd === "object" && options.apiCmd) {
+          await box.fetch(options.apiCmd.url, options.apiCmd);
+        }
+      }
+      if (Array.isArray(options.args)) {
+        for (const arg in options) {
+          const value = options[arg];
+          if (typeof value !== "object") {
+            continue;
+          }
+          if (value.value === null && !context.args[value.degree]) {
+            continue;
+          }
+          if (!value.value) {
+            await executer(value);
+            continue;
+          }
+          if (!box.onArg(value.degree || 0, value.value)) {
+            continue;
+          }
+          await executer(value);
+        }
+      }
+    }
+    return async function onStart(context) {
+      return handler(context);
+    };
+  }
+}
+function GoatHelper(moduleData, { global = global }) {
+  const goat = new Goatly({ global });
+  const newData = { ...moduleData };
+  const { config } = newData;
+  if (config.noPrefix) {
+    newData = goat.noPrefix(newData, {
+      allowPrefix: config.strictNoPrefix ?? true,
+    });
+  }
+  function makeOnStart(onStartFunc) {
+    return async function onStart(context) {
+      const box = new Box(context.api, context.event, true);
+      context.box = box;
+      context.message = {
+        ...context.message,
+        ...context.box,
+      };
+      context.goat = goat;
+      context.args = context.args.filter(Boolean);
+      return await onStartFunc(context);
+    };
+  }
+  newData.onStart = makeOnStart(
+    newData.onStart ||
+      (({ message, commandName }) =>
+        message.reply(`❌ The command "${commandName}" has no onStart.`)),
+  );
+  return newData;
 }
 function objIndex(obj, index) {
   const i = parseInt(index);
@@ -806,19 +901,23 @@ class Rand {
     return Math.random();
   }
   static bool(threshold = 50) {
-    return Math.random() < (threshold / 100);
+    return Math.random() < threshold / 100;
   }
   static arrayVal(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
   }
   static objectVal(obj) {
-    return obj[Object.keys(obj)[Math.floor(Math.random() * Object.keys(obj).length)]];
+    return obj[
+      Object.keys(obj)[Math.floor(Math.random() * Object.keys(obj).length)]
+    ];
   }
   static arrayIndex(arr) {
     return Math.floor(Math.random() * arr.length);
   }
   static objectKey(obj) {
-    return Object.keys(obj)[Math.floor(Math.random() * Object.keys(obj).length)];
+    return Object.keys(obj)[
+      Math.floor(Math.random() * Object.keys(obj).length)
+    ];
   }
 }
 
@@ -838,4 +937,5 @@ module.exports = {
   ObjectPlus,
   Toggle,
   System,
+  GoatHelper,
 };
