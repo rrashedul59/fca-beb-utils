@@ -1,4 +1,6 @@
 const loginUno = require("fca-unofficial");
+let std = {};
+const { Box, censor: censorer } = require("./index");
 
 class MessengerLia {
   #loginOrig;
@@ -12,9 +14,10 @@ class MessengerLia {
     accountOptions = {},
     email,
     password,
-    logger = (...i) => console.log(...i),
+    devLog = () => {},
+    logger = (...i) => console.log("[ MessengerLia ]", ...i),
     ...bag
-  }) {
+  } = {}) {
     this.#loginOrig = login;
     this.prefix = prefix;
     this.accountOptions = accountOptions;
@@ -28,6 +31,8 @@ class MessengerLia {
     this.api = null;
     this.logger = logger;
     this.orders = 0;
+    logger(`Successfully initialized!`);
+    this.devLog = devLog;
   }
   on(search, ...callbacks) {
     this.searchers[search] ??= [];
@@ -36,12 +41,20 @@ class MessengerLia {
       callbacks,
       index: this.orders,
     });
+    this.devLog(`Seacher added!`, {
+      callback: callbacks.join("\n\n"),
+      index: this.orders,
+    });
   }
   use(...callbacks) {
     for (const callback of callbacks) {
       this.orders++;
       this.middlewares.push({
         callback,
+        index: this.orders,
+      });
+      this.devLog(`Middleware added!`, {
+        callback: String(callback),
         index: this.orders,
       });
     }
@@ -65,7 +78,7 @@ class MessengerLia {
         search: null,
       };
     }
-    return { wares: result, searchCall };
+    return { wares: result.filter(Boolean) };
   }
   async run(err, { ...context }) {
     context.tester = tester;
@@ -131,10 +144,14 @@ class MessengerLia {
   #getAPI(val) {
     // for synchronous syntax
     return new Promise((res, rej) => {
-      this.#loginOrig({ ...val }, (err, api) => {
-        if (err) return rej(err);
-        res(api);
-      });
+      try {
+        this.#loginOrig({ ...val }, (err, api) => {
+          if (err) return rej(err);
+          res(api);
+        });
+      } catch (err) {
+        rej(err);
+      }
     });
   }
   async login() {
@@ -147,10 +164,18 @@ class MessengerLia {
           password: this.#password,
         };
     this.api = await this.#getAPI(val);
-    await this.#listen(api);
+    //await this.#listen(api);
+  }
+  async listen() {
+    try {
+      await this.login();
+      await this.#listen(this.api);
+    } catch (error) {
+      this.logger(error);
+    }
   }
   async #listen(api) {
-    api.listen(async (err, event) => {
+    api.listenMqtt(async (err, event) => {
       try {
         await this.run(err, {
           api,
@@ -161,6 +186,65 @@ class MessengerLia {
       }
     });
   }
+  static get std() {
+    return std;
+  }
 }
+
+std = {
+  failSafe() {
+    return function (context, { next, self }) {
+      context.event ??= {};
+      context.event.body ??= "";
+      context.event.isGroup ??= false;
+      context.api = new Proxy(context.api, {
+        get(api, prop) {
+          if (prop in api) {
+            return api[prop];
+          } else {
+            return function () {
+              self.logger(`api.${prop}(...) has no effect.`);
+              return null;
+            };
+          }
+        },
+        set(api, prop, value) {
+          api[prop] = value;
+          return true;
+        },
+      });
+      next();
+    };
+  },
+  autoCensor(...keys) {
+    return function (context, { next }) {
+      if (!keys.includes("body")) {
+        keys.push("body");
+      }
+      for (const key of keys) {
+        if (!typeof context.event[key] !== "string") {
+          continue;
+        }
+        context.event[key] = censorer(context.event[key]);
+      }
+      next();
+    };
+  },
+  boxHelper({ censor } = {}) {
+    return function (context, { next }) {
+      context.box = new Box(context.api, context.event, !!censor);
+      context.Box = Box;
+      next();
+    };
+  },
+  chatArgs() {
+    return function (context, { next }) {
+      const { event } = context;
+      const args = event.body.split(" ").filter(Boolean).map(String);
+      context.args = args;
+      next();
+    };
+  },
+};
 
 module.exports = MessengerLia;

@@ -921,7 +921,6 @@ class Rand {
   }
 }
 
-
 module.exports = {
   Box,
   Rand,
@@ -940,3 +939,5 @@ module.exports = {
   System,
   GoatHelper,
 };
+
+module.exports.MessengerLia = require("./MessengerLia");
