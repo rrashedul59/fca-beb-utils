@@ -31,13 +31,11 @@ class MessengerLia {
   }
   on(search, ...callbacks) {
     this.searchers[search] ??= [];
-    for (const callback of callbacks) {
-      this.orders++;
-      this.searchers[search].push({
-        callback,
-        index: this.orders,
-      });
-    }
+    this.orders++;
+    this.searchers[search].push({
+      callbacks,
+      index: this.orders,
+    });
   }
   use(...callbacks) {
     for (const callback of callbacks) {
@@ -52,20 +50,22 @@ class MessengerLia {
     const { searchers, middlewares } = this;
     let result = [];
     for (const search in searchers) {
-      for (const { callback, index } of searchers[search]) {
+      for (const { callbacks, index } of searchers[search]) {
         result[index] = {
-          callback,
+          type: "search",
+          callbacks,
           search,
         };
       }
     }
     for (const { index, callback } of middlewares) {
       result[index] = {
+        type: "ware",
         callback,
         search: null,
       };
     }
-    return result;
+    return { wares: result, searchCall };
   }
   async run(err, { ...context }) {
     context.tester = tester;
@@ -90,22 +90,34 @@ class MessengerLia {
       if (err) {
         this.logger(err);
       }
-      const wares = this.sortOrders();
+      const { wares } = this.sortOrders();
       for (const ware of wares) {
-        const { callback, search } = ware || {};
-        if (typeof callback !== "function") continue;
+        const { search } = ware || {};
         if (!tester(search)) continue;
-        await new Promise(async (resolve) => {
-          context.next = resolve;
-          context.search = search;
-          context.self = this;
-          try {
-            await callback(context, resolve);
-          } catch (error) {
-            this.logger(error);
-            resolve();
+        function job(callback) {
+          return new Promise(async (resolve) => {
+            context.next = resolve;
+            context.search = search;
+            context.self = this;
+            try {
+              await callback(context, resolve);
+            } catch (error) {
+              this.logger(error);
+              resolve();
+            }
+          });
+        }
+        if (ware.type === "search") {
+          for (const callback of ware.callbacks) {
+            if (typeof callback !== "function") continue;
+            await job(callback);
           }
-        });
+        } else {
+          const { callback } = ware;
+          if (typeof callback !== "function") continue;
+
+          await job(callback);
+        }
       }
     } catch (error) {
       this.logger(error);
