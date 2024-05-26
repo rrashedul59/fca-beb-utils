@@ -1,6 +1,8 @@
 const loginUno = require("fca-unofficial");
 let std = {};
 const { Box, censor: censorer } = require("./index");
+const path = require("path");
+const fs = require("fs");
 
 class MessengerLia {
   #loginOrig;
@@ -175,6 +177,7 @@ class MessengerLia {
     }
   }
   async #listen(api) {
+    api.setOptions(this.accountOptions);
     api.listenMqtt(async (err, event) => {
       try {
         await this.run(err, {
@@ -242,6 +245,80 @@ std = {
       const { event } = context;
       const args = event.body.split(" ").filter(Boolean).map(String);
       context.args = args;
+      next();
+    };
+  },
+  parseCommandName() {
+    return function (context, { next, self }) {
+      const { body } = context.event;
+      const { prefix = "/" } = self;
+      let willProceed = true;
+      if (typeof body !== "string") {
+        willProceed = false;
+      }
+      if (!body.startsWith(prefix)) {
+        willProceed = false;
+      }
+      if (!willProceed) {
+        return;
+      }
+      let [commandName, ...args] = body.slice(prefix.length).split(" ");
+      args = args.filter(Boolean).map(String);
+      context.commandName = commandName;
+      context.prefix = prefix;
+      context.args = args;
+      next();
+    };
+  },
+  parseCommandProperties() {
+    return function (context, { next }) {
+      function parseDots(strr) {
+        let str = String(strr);
+        let result = {};
+
+        const keys = str
+          .split(".")
+          .map((i) => i.trim())
+          .filter(Boolean);
+
+        function adder(obj, keysArray) {
+          const key = keysArray.shift();
+          if (keysArray.length === 0) {
+            obj[key] = true;
+          } else {
+            obj[key] = obj[key] || {};
+            adder(obj[key], keysArray);
+          }
+        }
+
+        adder(result, keys);
+        return result;
+      }
+      context.parseDots = parseDots;
+      context.commandProperties = parseDots(context.commandName);
+      next();
+    };
+  },
+  static(absPath) {
+    return function (context, { next }) {
+      if (!(commandName in context)) {
+        throw new Error("context.commandName is missing.");
+      }
+      const { commandName } = context;
+      const fileContent = fs.createReadStream(
+        path.join(absPath, commandName),
+        "utf-8",
+      );
+      context.api.sendMessage(
+        {
+          attachment: fileContent,
+        },
+        context.event.threadID,
+        () => {
+          fileContent.close();
+        },
+        context.event.messageID,
+      );
       next();
     };
   },
