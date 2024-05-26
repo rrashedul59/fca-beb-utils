@@ -921,6 +921,7 @@ class Rand {
   }
 }
 
+
 module.exports = {
   Box,
   Rand,
