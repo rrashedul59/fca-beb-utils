@@ -96,11 +96,12 @@ class MessengerLia {
         if (!tester(search)) continue;
         function job(callback) {
           return new Promise(async (resolve) => {
-            context.next = resolve;
-            context.search = search;
-            context.self = this;
             try {
-              await callback(context, resolve);
+              await callback(context, {
+                next: resolve,
+                search,
+                self: this,
+              });
             } catch (error) {
               this.logger(error);
               resolve();
@@ -108,14 +109,18 @@ class MessengerLia {
           });
         }
         if (ware.type === "search") {
-          for (const callback of ware.callbacks) {
-            if (typeof callback !== "function") continue;
-            await job(callback);
+          async function x() {
+            for (const callback of ware.callbacks) {
+              if (typeof callback !== "function") continue;
+              await job(callback);
+            }
           }
+          // this is intended to avoid blocking the next middleware or searcher.
+          x().catch(this.logger);
         } else {
           const { callback } = ware;
           if (typeof callback !== "function") continue;
-
+          // this blocks the next middleware or searcher
           await job(callback);
         }
       }
@@ -124,6 +129,7 @@ class MessengerLia {
     }
   }
   #getAPI(val) {
+    // for synchronous syntax
     return new Promise((res, rej) => {
       this.#loginOrig({ ...val }, (err, api) => {
         if (err) return rej(err);
