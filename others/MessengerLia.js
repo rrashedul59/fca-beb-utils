@@ -218,7 +218,7 @@ std = {
         next();
       }
     }
-  }
+  },
   failSafe() {
     return function (context, { next, self }) {
       context.event ??= {};
