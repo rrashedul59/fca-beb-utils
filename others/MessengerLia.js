@@ -211,6 +211,14 @@ class MessengerLia {
 }
 
 std = {
+  prefixer() {
+    return function(context, { next }) {
+      if (context.event.body.startsWith(this.prefix)) {
+        context.event.body = context.event.body.slice(this.prefix.length);
+        next();
+      }
+    }
+  }
   failSafe() {
     return function (context, { next, self }) {
       context.event ??= {};
@@ -315,7 +323,7 @@ std = {
       next();
     };
   },
-  static(absPath) {
+  static(absPath, autoSend) {
     return function (context, { next }) {
       if (!(commandName in context)) {
         throw new Error("context.commandName is missing.");
@@ -325,6 +333,8 @@ std = {
         path.join(absPath, commandName),
         "utf-8",
       );
+      context.fileContent = fileContent;
+      if (!autoSend) return;
       context.api.sendMessage(
         {
           attachment: fileContent,
