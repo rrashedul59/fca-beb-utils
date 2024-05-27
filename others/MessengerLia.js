@@ -9,6 +9,7 @@ class MessengerLia {
   #appState;
   #email;
   #password;
+  #extraLogin;
   constructor({
     login = loginUno,
     appState = [],
@@ -18,6 +19,7 @@ class MessengerLia {
     password,
     devLog = () => {},
     logger = (...i) => console.log("[ MessengerLia ]", ...i),
+    extraLogin,
     ...bag
   } = {}) {
     this.#loginOrig = login;
@@ -33,6 +35,7 @@ class MessengerLia {
     this.api = null;
     this.logger = logger;
     this.orders = 0;
+    this.#extraLogin = extraLogin || [];
     logger(`Successfully initialized!`);
     this.devLog = devLog;
   }
@@ -61,7 +64,7 @@ class MessengerLia {
       });
     }
   }
-  sortOrders() {
+  #sortOrders() {
     const { searchers, middlewares } = this;
     let result = [];
     for (const search in searchers) {
@@ -82,7 +85,7 @@ class MessengerLia {
     }
     return { wares: result.filter(Boolean) };
   }
-  async run(err, { ...context }) {
+  async #run(err, { ...context }) {
     context.tester = tester;
     function tester(search) {
       if (search === null) {
@@ -105,7 +108,7 @@ class MessengerLia {
       if (err) {
         this.logger(err);
       }
-      const { wares } = this.sortOrders();
+      const { wares } = this.#sortOrders();
       for (const ware of wares) {
         const { search } = ware || {};
         if (!tester(search)) continue;
@@ -143,6 +146,7 @@ class MessengerLia {
       this.logger(error);
     }
   }
+
   #getAPI(val) {
     // for synchronous syntax
     return new Promise((res, rej) => {
@@ -156,21 +160,33 @@ class MessengerLia {
       }
     });
   }
-  async login() {
-    const val = this.#appState
+  // do not use login() if you wanna use it, use listen() instead
+  async login({ email, password, appState }) {
+    const val = appState
       ? {
-          appState: this.#appState,
+          appState: appState,
         }
       : {
-          email: this.#email,
-          password: this.#password,
+          email: email,
+          password: password,
         };
-    this.api = await this.#getAPI(val);
+    const api = await this.#getAPI(val);
+    return api;
     //await this.#listen(api);
   }
   async listen() {
     try {
-      await this.login();
+      if (this.#extraLogin.length) {
+        for (const extra of this.#extraLogin) {
+          const api = await this.login(extra);
+          this.#listen(api);
+        }
+      }
+      this.api = await this.login({
+        email: this.#email,
+        password: this.#password,
+        appState: this.#appState,
+      });
       await this.#listen(this.api);
     } catch (error) {
       this.logger(error);
@@ -180,7 +196,7 @@ class MessengerLia {
     api.setOptions(this.accountOptions);
     api.listenMqtt(async (err, event) => {
       try {
-        await this.run(err, {
+        await this.#run(err, {
           api,
           event,
         });
