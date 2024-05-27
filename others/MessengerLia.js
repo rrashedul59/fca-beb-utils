@@ -1,6 +1,6 @@
 const loginUno = require("fca-unofficial");
 let std = {};
-const { Box, censor: censorer } = require("./index");
+const { Box, censor: censorer } = require("../index");
 const path = require("path");
 const fs = require("fs");
 

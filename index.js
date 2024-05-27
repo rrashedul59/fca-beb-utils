@@ -938,6 +938,7 @@ module.exports = {
   Toggle,
   System,
   GoatHelper,
+  RUI: require("./others/RUI")
 };
 
-module.exports.MessengerLia = require("./MessengerLia");
+module.exports.MessengerLia = require("./others/MessengerLia");
