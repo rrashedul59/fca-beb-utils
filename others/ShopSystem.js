@@ -249,7 +249,7 @@ async function shopGoatMain(funcMain, context) {
             `❌ | The command "${commandName}" requires ${price}$ but you only have ${money}$!`,
           );
         }
-        await box.waitForReaction(
+        /*await box.waitForReaction(
           `⚠️ | Do you want to purchase the command "${commandName}" for ${price}$?\nReact 👍 to this message to confirm`,
           ({ event: reactionEvent, resolve }) => {
             if (reactionEvent.userID !== event.senderID) {
@@ -260,7 +260,7 @@ async function shopGoatMain(funcMain, context) {
             }
             resolve();
           },
-        );
+        );*/
         await usersData.set(event.senderID, {
           money: money - price,
           shopItems: {

@@ -115,6 +115,7 @@ class Box {
     }
     this.hasListen = true;
     this.emitter = this.api.listenMqtt(async (err, event) => {
+      let box;
       try {
         if (err) {
           return this.logger(err);
@@ -122,6 +123,8 @@ class Box {
         if (!event) {
           return this.logger("Missing event, skipping...");
         }
+        box = new Box(this.api, event);
+
         if (
           event.type === "message_reaction" &&
           this.reactWaiter.has(event.messageID)
@@ -162,11 +165,13 @@ class Box {
               this.makeObj({ event, resolve, reject, deleteWaiter, ...etc }),
             );
           } catch (err2) {
+            if (box) box.error(err2);
             reject(err2);
           }
         }
         await mainCallback(this.makeObj({ event }));
       } catch (error) {
+        if (box) box.error(error);
         this.logger(error);
       }
     });
