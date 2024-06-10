@@ -8,17 +8,18 @@ class LianeAPI {
     this.username = username || "unregistered";
     this.url = `https://liaspark.chatbotcommunity.ltd`;
   }
-  async ask(entryQuestion, key = "message") {
+  async ask(entryQuestion, key = "message", { ...extraQuery } = {}) {
     const question = String(entryQuestion);
     const response = await axios.get(
       `${this.url}/@${this.username}/api/${this.id}`,
       {
         params: {
+          ...extraQuery,
           query: question,
         },
       },
     );
-    return response.data[key];
+    return response.data[key || "message"];
   }
   async request(entryQuestion, { ...otherParams } = {}) {
     const question = String(entryQuestion);
@@ -36,6 +37,10 @@ class LianeAPI {
   static async aiInfos() {
     const response = await axios.get(`${this.url}/api/myai?type=all&c=only`);
     return response.data;
+  }
+  async getAiInfo() {
+    const infos = await LianeAPI.aiInfos();
+    return infos[`${this.id}@${this.username}`];
   }
   apiUrl() {
     return `${this.url}/@${this.username}/api/${this.id}`;
@@ -74,12 +79,131 @@ class Box {
    * @constructor
    * @param {object} api - The Facebook Messenger API instance.
    * @param {object} event - The event object containing message details.
+   * @author Liane Cagara
+   * @license MIT
    */
-  constructor(api, event, autocensor = true) {
+  constructor(api, event, options = { autocensor: true }) {
+    if (typeof options === "boolean") {
+      options = { autocensor: options };
+    }
     this.api = api;
     this.event = event;
     this.lastID = null;
-    this.autocensor = !!autocensor;
+    this.autocensor = !!options.autocensor;
+    this.hasListen = false;
+    this.willLog = !!options.willLog;
+    this.replyWaiter = new Map();
+    this.reactWaiter = new Map();
+  }
+  logger(...data) {
+    if (this.willLog) {
+      console.log("[ Box ]", ...data);
+    }
+  }
+  listen(mainCallback) {
+    mainCallback ??= async() => {};
+    if (this.hasListen) {
+      this.logger("Already listening...");
+      return;
+    }
+    this.hasListen = true;
+    this.api.listenMqtt(async (err, event) => {
+      try {
+        if (err) {
+          return this.logger(err);
+        }
+        if (!event) {
+          return this.logger("Missing event, skipping...");
+        }
+        if (
+          event.type === "message_reaction" &&
+          this.reactWaiter.has(event.messageID)
+        ) {
+          const { resolve, reject, callback, ...etc } = this.reactWaiter.get(
+            event.messageID,
+          );
+          this.reactWaiter.delete(event.messageID);
+          if (!resolve || !reject || !callback) {
+            throw new Error("Missing resolve, reject, or callback.");
+          }
+          try {
+            await callback(this.makeObj({ event, resolve, reject, ...etc }));
+          } catch (err2) {
+            reject(err2);
+          }
+        }
+        if (
+          event.type === "message_reply" &&
+          this.replyWaiter.has(event.messageReply.messageID)
+        ) {
+          const { resolve, reject, callback, ...etc } = this.replyWaiter.get(
+            event.messageReply.messageID,
+          );
+          this.replyWaiter.delete(event.messageReply.messageID);
+          if (!resolve || !reject || !callback) {
+            throw new Error("Missing resolve, reject, or callback.");
+          }
+          try {
+            await callback(this.makeObj({ event, resolve, reject, ...etc }));
+          } catch (err2) {
+            reject(err2);
+          }
+        }
+        await mainCallback(this.makeObj({ event }));
+      } catch (error) {
+        this.logger(error);
+      }
+    });
+  }
+  makeObj({ event, resolve, reject, ...extra }) {
+    const box = new Box(this.api, event);
+    return {
+      api: this.api,
+      box,
+      resolve,
+      reject,
+      event,
+      args: box.args,
+      ...extra,
+    };
+  }
+  async waitForReaction(initialText, callback) {
+    callback ??= ({ resolve, event }) => {
+      resolve(event);
+    };
+    if (!this.hasListen) {
+      throw new Error(
+        "Cannot use Box.waitForReaction without invoking Box.listen()",
+      );
+    }
+    const messageInfo = await this.reply(initialText);
+    return new Promise((resolve, reject) => {
+      this.reactWaiter.set(messageInfo.messageID, {
+        resolve,
+        reject,
+        callback,
+        messageInfo,
+      });
+    });
+  }
+  async waitForReply(initialText, callback) {
+    callback ??= ({ resolve, event }) => {
+      resolve(event);
+    };
+    if (!this.hasListen) {
+      throw new Error(
+        "Cannot use Box.waitForReply without invoking Box.listen()",
+      );
+    }
+    const messageInfo = await this.reply(initialText);
+    return new Promise((resolve, reject) => {
+      this.replyWaiter.set(messageInfo.messageID, {
+        resolve,
+        reject,
+        callback,
+        messageInfo,
+      });
+    });
   }
   static create(...args) {
     return new Box(...args);
@@ -938,7 +1062,7 @@ module.exports = {
   Toggle,
   System,
   GoatHelper,
-  RUI: require("./others/RUI")
+  RUI: require("./others/RUI"),
 };
 
 module.exports.MessengerLia = require("./others/MessengerLia");
