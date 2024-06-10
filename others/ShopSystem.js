@@ -166,11 +166,14 @@ class GoatWrapper {
       if (!commandName) {
         return;
       }
-      if (commandName.startsWith(prefix)) {
+      const hasPrefix = commandName.startsWith(prefix);
+      if (hasPrefix) {
         commandName = commandName.replace(prefix, "");
-      } else if (
+      }
+      if (
         options.allowPrefix === false &&
-        commandName.toLowerCase() === name.toLowerCase()
+        commandName.toLowerCase() === name.toLowerCase() &&
+        hasPrefix
       ) {
         return context.message.reply(
           `❌ | The command "${commandName}" cannot be used with the prefix "${prefix}"`,
