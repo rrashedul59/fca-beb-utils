@@ -94,11 +94,18 @@ class Box {
     this.willLog = !!options.willLog;
     this.replyWaiter = new Map();
     this.reactWaiter = new Map();
+    this.emitter = null;
   }
   logger(...data) {
     if (this.willLog) {
       console.log("[ Box ]", ...data);
     }
+  }
+  close() {
+    if (!this.hasListen) {
+      throw new Error("Not listened yet.");
+    }
+    return this.emitter.stopListening();
   }
   listen(mainCallback) {
     mainCallback ??= async () => {};
@@ -107,7 +114,7 @@ class Box {
       return;
     }
     this.hasListen = true;
-    this.api.listenMqtt(async (err, event) => {
+    this.emitter = this.api.listenMqtt(async (err, event) => {
       try {
         if (err) {
           return this.logger(err);
