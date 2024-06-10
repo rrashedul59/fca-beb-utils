@@ -142,6 +142,8 @@ class GoatWrapper {
       allowPrefix: false,
       disableOnChat: false,
     };
+    options.allowPrefix ??= false;
+    options.disableOnChat ??= false;
     const moduleData = this.command;
     const { prefix } = global.GoatBot.config;
     const onStartBackup = moduleData.onStart.bind(moduleData);
