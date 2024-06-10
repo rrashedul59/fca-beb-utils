@@ -137,6 +137,69 @@ class GoatWrapper {
       return og(i);
     };
   }
+  applyNoPrefix(options) {
+    options ??= {
+      allowPrefix: false,
+      disableOnChat: false,
+    };
+    const moduleData = this.command;
+    const { prefix } = global.GoatBot.config;
+    const onStartBackup = moduleData.onStart.bind(moduleData);
+    const onChatBackup = moduleData.onChat
+      ? moduleData.onChat.bind(moduleData)
+      : () => {};
+    moduleData.config.author = `${moduleData.config.author} || Liane (noPrefix)`;
+    moduleData.onStart = async function () {};
+    const { name } = moduleData.config;
+    moduleData.onChat = async function ({ ...context }) {
+      const { event } = context;
+      event.body = event.body || "";
+      if (!options.disableOnChat) {
+        try {
+          await onChatBackup({ ...context });
+        } catch (error) {
+          console.log(error);
+        }
+      }
+      let willApply = false;
+      let [commandName, ...args] = event.body.split(" ").filter(Boolean);
+      if (!commandName) {
+        return;
+      }
+      if (commandName.startsWith(prefix)) {
+        commandName = commandName.replace(prefix, "");
+      } else if (
+        options.allowPrefix === false &&
+        commandName.toLowerCase() === name.toLowerCase()
+      ) {
+        return context.message.reply(
+          `❌ | The command "${commandName}" cannot be used with the prefix "${prefix}"`,
+        );
+      }
+      commandName = commandName.trim();
+
+      if (commandName.toLowerCase().trim() === name.toLowerCase().trim()) {
+        willApply = true;
+      }
+      if (Array.isArray(moduleData.config.aliases)) {
+        const { aliases } = moduleData.config;
+        const condition = aliases.some((alias) => {
+          return (
+            commandName.toLowerCase().trim() ===
+            String(alias).toLowerCase().trim()
+          );
+        });
+        if (condition) {
+          willApply = true;
+        }
+      }
+      if (!willApply) {
+        return;
+      }
+      await onStartBackup({ ...context, args, commandName });
+    };
+    return moduleData;
+  }
 }
 
 class BotpackWrapper {
