@@ -1082,3 +1082,5 @@ module.exports = {
 };
 
 module.exports.MessengerLia = require("./others/MessengerLia");
+
+Object.assign(module.exports, require("./others/ShopSystem"));

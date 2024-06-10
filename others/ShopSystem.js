@@ -1,4 +1,6 @@
 const { Box } = require("../index");
+const { createGoatRateLimit } = require("./rateLimit");
+
 global.ShopSystem = {
   priceList: {
     /*[key]: {
@@ -9,11 +11,15 @@ global.ShopSystem = {
   },
 };
 
-class GoatShop {
+class GoatWrapper {
   constructor(moduleExports) {
     this.command = moduleExports;
     this.origMain = this.command.onStart;
+    if (!GoatWrapper.isValid(this.command)) {
+      throw new Error("GoatWrapper will not work with non-goatbot modules.");
+    }
   }
+
   static isValid(data) {
     const validKeys = ["config", "onStart"];
     const invalidKeys = [
@@ -28,27 +34,52 @@ class GoatShop {
       (key) => validKeys.includes(key) && !invalidKeys.includes(key),
     );
   }
-  applyLock(price) {
-    price = Number(price);
-    if (isNaN(price)) {
-      throw new TypeError(
-        "The first argument must be a number or a string that can be converted to a number.",
-      );
+
+  applyLock(type, key) {
+    if (type === "shop") {
+      const price = Number(key);
+      if (isNaN(price)) {
+        throw new TypeError(
+          "The first argument must be a number or a string that can be converted to a number.",
+        );
+      }
+
+      global.ShopSystem.priceList[this.command.config.name] = {
+        name: this.command.config.name,
+        price,
+        trial: 0,
+      };
+      this.command.onStart = (i) => shopGoatMain(this.origMain, i);
+    } else if (type === "rateLimit") {
+      const { maxRequests, interval } = key || {};
+      const og = this.command.onStart;
+      this.command.onStart = createGoatRateLimit(og, {
+        maxRequests,
+        interval,
+      });
+    } else {
+      throw new Error(`Cannot apply a lock to an invalid type: ${type}`);
     }
-    global.ShopSystem.priceList[this.command.config.name] = {
-      name: this.command.config.name,
-      price,
-      trial: 0,
+  }
+
+  applyBox() {
+    const og = this.command.onStart;
+    this.command.onStart = (i) => {
+      i.box = new Box(i.api, i.event);
+      return og(i);
     };
-    this.command.onStart = (i) => shopGoatMain(this.origMain, i);
   }
 }
 
-class BotpackShop {
+class BotpackWrapper {
   constructor(moduleExports) {
     this.command = moduleExports;
     this.origMain = this.command.run;
+    if (!BotpackWrapper.isValid(this.command)) {
+      throw new Error("BotpackWrapper will not work with non-botpack modules.");
+    }
   }
+
   static isValid(data) {
     const validKeys = ["config", "run"];
     const invalidKeys = [
@@ -64,15 +95,8 @@ class BotpackShop {
       (key) => validKeys.includes(key) && !invalidKeys.includes(key),
     );
   }
-  /*applyLock(price) {
-    price = Number(price);
-    if (isNaN(price)) {
-      throw new TypeError(
-        "The first argument must be a number or a string that can be converted to a number.",
-      );
-    }
-    this.command.run = (i) => shopBPMain(this.command.run, i);
-  }*/
+
+  // Coming soon.
 }
 
 async function shopGoatMain(funcMain, context) {
@@ -81,7 +105,7 @@ async function shopGoatMain(funcMain, context) {
   try {
     const { money = 0, shopItems = {} } = await usersData.get(event.senderID);
     const { price = null } = global.ShopSystem.priceList[commandName] ?? {};
-    if (price === null && !(commandName in shopItems)) {
+    if (price !== null && !(commandName in shopItems)) {
       if (args[0] && args[0].toLowerCase() === "purchase") {
         box.listen();
         if (money < price) {
@@ -125,13 +149,24 @@ async function shopGoatMain(funcMain, context) {
 
 class ShopSystem {
   static get Goat() {
-    return GoatShop;
+    return class {
+      constructor(data, price) {
+        const wrapper = new GoatWrapper(data);
+        wrapper.applyLock("shop", price);
+      }
+    };
   }
   static get Botpack() {
-    return BotpackShop;
+    return class {
+      constructor() {
+        throw new Error("In development!");
+      }
+    };
   }
 }
 
 module.exports = {
   ShopSystem,
+  GoatWrapper,
+  BotpackWrapper,
 };
