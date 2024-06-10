@@ -101,7 +101,7 @@ class Box {
     }
   }
   listen(mainCallback) {
-    mainCallback ??= async() => {};
+    mainCallback ??= async () => {};
     if (this.hasListen) {
       this.logger("Already listening...");
       return;
@@ -119,15 +119,20 @@ class Box {
           event.type === "message_reaction" &&
           this.reactWaiter.has(event.messageID)
         ) {
-          const { resolve, reject, callback, ...etc } = this.reactWaiter.get(
+          let { resolve, reject, callback, ...etc } = this.reactWaiter.get(
             event.messageID,
           );
-          this.reactWaiter.delete(event.messageID);
           if (!resolve || !reject || !callback) {
             throw new Error("Missing resolve, reject, or callback.");
           }
+          function deleteWaiter() {
+            this.reactWaiter.delete(event.messageID);
+          }
+
           try {
-            await callback(this.makeObj({ event, resolve, reject, ...etc }));
+            await callback(
+              this.makeObj({ event, resolve, reject, deleteWaiter, ...etc }),
+            );
           } catch (err2) {
             reject(err2);
           }
@@ -136,15 +141,19 @@ class Box {
           event.type === "message_reply" &&
           this.replyWaiter.has(event.messageReply.messageID)
         ) {
-          const { resolve, reject, callback, ...etc } = this.replyWaiter.get(
+          let { resolve, reject, callback, ...etc } = this.replyWaiter.get(
             event.messageReply.messageID,
           );
-          this.replyWaiter.delete(event.messageReply.messageID);
           if (!resolve || !reject || !callback) {
             throw new Error("Missing resolve, reject, or callback.");
           }
+          function deleteWaiter() {
+            this.replyWaiter.delete(event.messageReply.messageID);
+          }
           try {
-            await callback(this.makeObj({ event, resolve, reject, ...etc }));
+            await callback(
+              this.makeObj({ event, resolve, reject, deleteWaiter, ...etc }),
+            );
           } catch (err2) {
             reject(err2);
           }

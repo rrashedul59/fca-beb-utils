@@ -269,6 +269,97 @@ try {
   box.error(error);
 }
 ```
+## Additional Methods Documentation for Box Class
+
+### `listen(mainCallback)`
+
+**Description:** Sets up the Box instance to listen for events from the Facebook Messenger API. This method should be called to start processing incoming messages and other events.
+
+**Parameters:**
+- `mainCallback` (function, optional): The main callback function to execute when an event is received. Defaults to an empty asynchronous function.
+- Must be executed in order to access waitForReply and waitForReaction.
+- Don't execute if not necessary to save resources.
+
+**Usage:**
+
+**Without Callback:**
+```javascript
+box.listen();
+```
+
+**With Callback:**
+```javascript
+box.listen(async ({ event, box, args, api }) => {
+  // Handle the event here
+});
+```
+
+### `async waitForReply(initialText, callback)`
+
+**Description:** Waits for a reply to a message. Sends an initial message and resolves when a reply is received.
+
+**Parameters:**
+- `initialText` (string): The initial text message to send.
+- `callback` (function, optional): The callback function to execute when a reply is received. Defaults to resolving the event.
+
+**Returns:** 
+- A promise resolving to the event object containing the reply.
+
+**Usage:**
+
+**Without Callback:**
+```javascript
+box.waitForReply('Please reply to this message!').then(replyEvent => {
+  box.send(`${replyEvent.senderID} sent a reply:\n${replyEvent.body}`)
+});
+```
+
+**With Callback:**
+```javascript
+const bet = await box.waitForReply('Please reply to a bet (integer) this message!', async ({ event: event2, box, args, resolve }) => {
+  if (event2.senderID !== event.senderID) {
+    return box.reply("I'm not talking to you!");
+  }
+  const target = parseInt(args[0]);
+  if (isNaN(target)) {
+    return box.reply("Invalid Bet!");
+  }
+  resolve(target);
+});
+box.send(`The bet is ${bet}`)
+```
+
+### `async waitForReaction(initialText, callback)`
+
+**Description:** Waits for a reaction to a message. Sends an initial message and resolves when a reaction is received.
+
+**Parameters:**
+- `initialText` (string): The initial text message to send.
+- `callback` (function, optional): The callback function to execute when a reaction is received. Defaults to resolving the event.
+
+**Returns:** 
+- A promise resolving to the event object containing the reaction.
+
+**Usage:**
+
+**Without Callback:**
+```javascript
+box.waitForReaction('React to this message!').then(reactionEvent => {
+  box.send(`Received Reaction from ${reaction.senderID}: ${reactionEvent.reaction}`);
+});
+```
+
+**With Callback:**
+```javascript
+const { senderID } = await box.waitForReaction('React 💗 to this message!', async ({ box, event, resolve }) => {
+  if (event.reaction !== "💗") {
+    return box.reply(`Wrong reaction! I don't like ${event.reaction}`);
+  }
+  resolve(event);
+});
+box.send(`Thank you for reaction, ${senderID}`);
+```
+
 
 ## Summary
 
@@ -287,6 +378,9 @@ The `Box` class provides a structured way to interact with Facebook Messenger ev
 11. `get args()`
 12. `SyntaxError()`
 13. `error(error)`
+14. `listen(callback = async function() {})`
+15. `waitForReply(initialMessage, callback)`
+16. `waitForReaction(initialMessage, callback)`
 
 These methods enable developers to easily integrate with Facebook Messenger events and build sophisticated chatbot interactions using the `Box` class.
 ```
