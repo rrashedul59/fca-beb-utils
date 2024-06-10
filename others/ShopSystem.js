@@ -10,6 +10,74 @@ global.ShopSystem = {
     } */
   },
 };
+global.LockSystem = {
+  keyData: new Map(),
+  commandData: new Map(),
+  userData: new Map(),
+};
+
+class LockSystem {
+  static lockCommand(commandName, key) {
+    const commands = global.LockSystem.commandData.get(key) || [];
+    commands.push(commandName);
+    global.LockSystem.commandData.set(key, commands);
+  }
+  static isLockedCommand(commandName, key) {
+    const commands = global.LockSystem.commandData.get(key) || [];
+    return commands.includes(commandName);
+  }
+  static isLockedUser(userID, key) {
+    const users = global.LockSystem.userData.get(key) || [];
+    return users.includes(userID);
+  }
+  static isLocked(key) {
+    return global.LockSystem.keyData.has(key);
+  }
+  static unlockCommand(commandName, key) {
+    let commands = global.LockSystem.commandData.get(key) || [];
+    commands = commands.filter((command) => command !== commandName);
+    global.LockSystem.commandData.set(key, commands);
+  }
+  static lockUser(userID, key) {
+    const users = global.LockSystem.userData.get(key) || [];
+    users.push(userID);
+    global.LockSystem.userData.set(key, users);
+  }
+  static unlockUser(userID, key) {
+    let users = global.LockSystem.userData.get(key) || [];
+    users = users.filter((user) => user !== userID);
+    global.LockSystem.userData.set(key, users);
+  }
+  static registerKey(
+    key,
+    {
+      message = `🔒 | This command is locked for no provided reason.`,
+      reaction = "",
+    },
+  ) {
+    global.LockSystem.keyData.set(key, {
+      message,
+      reaction,
+    });
+  }
+  static unregisterKey(key) {
+    global.LockSystem.keyData.delete(key);
+  }
+  static getKeyData(key) {
+    const options = global.LockSystem.keyData.get(key);
+    if (!options) {
+      return null;
+    }
+    const users = global.LockSystem.userData.get(key) || [];
+    const commands = global.LockSystem.commandData.get(key) || [];
+    return {
+      options,
+      users,
+      commands,
+    };
+  }
+}
+global.LockSystem.class = LockSystem;
 
 class GoatWrapper {
   constructor(moduleExports) {
@@ -164,9 +232,11 @@ class ShopSystem {
     };
   }
 }
+global.ShopSystem.class = ShopSystem;
 
 module.exports = {
   ShopSystem,
   GoatWrapper,
   BotpackWrapper,
+  LockSystem,
 };
