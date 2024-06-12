@@ -123,6 +123,8 @@ class Box {
         if (!event) {
           return this.logger("Missing event, skipping...");
         }
+        event.body ??= "";
+        event.messageReply ??= null;
         box = new Box(this.api, event);
 
         if (
@@ -264,6 +266,9 @@ class Box {
   }
   get args() {
     const { event } = this;
+    if (!event.body) {
+      return [];
+    }
     const [, ...args] = event.body.split(" ").filter(Boolean);
     return args;
   }
