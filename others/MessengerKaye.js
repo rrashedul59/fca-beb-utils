@@ -95,6 +95,7 @@ class MessengerKaye {
     return this.onFuncs[name] || [];
   }
   #internalListen(err, event) {
+    const extraArgs = [this.api];
     if (err) {
       this.#callOnFunc("listen_error", err);
       return;
@@ -199,9 +200,9 @@ class MessengerKaye {
         target[prop] = value;
       },
     });
-    this.#callOnFunc("listen_success", event);
+    this.#callOnFunc("listen_success", event, ...extraArgs);
     if (event?.type) {
-      this.#callOnFunc(event.type, event);
+      this.#callOnFunc(event.type, event, ...extraArgs);
     }
   }
   #callOnFunc(name, ...args) {
