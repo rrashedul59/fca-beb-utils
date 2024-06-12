@@ -90,20 +90,19 @@ class GoatWrapper {
 
   static isValid(data) {
     const validKeys = ["config", "onStart"];
-    const invalidKeys = [
-      "meta",
-      "run",
-      "onRun",
-      "handleEvent",
-      "handleReaction",
-      "metadata",
-    ];
+    const invalidKeys = [];
     return Object.keys(data).every(
       (key) => validKeys.includes(key) && !invalidKeys.includes(key),
     );
   }
 
   applyLock(type, key) {
+    const { role } = this.command.config;
+    if (role === 1 || role === 2) {
+      throw new Error(
+        "Locks do not work with commands with the role 1 and 2! Make sure that the command has role 0.",
+      );
+    }
     if (type === "shop") {
       const price = Number(key);
       if (isNaN(price)) {

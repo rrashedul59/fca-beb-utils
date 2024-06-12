@@ -180,13 +180,13 @@ class MessengerKaye {
     const assert = possibleEvents[event.type];
     event = new Proxy(event, {
       get(target, prop) {
-        if (!(prop in assert)) {
-          console.warn(
-            `WARN: The property "${prop}" might not exist in type: "${event.type}"`,
-          );
-        } else if (!(prop in target)) {
+        if (!(prop in target)) {
           console.warn(
             `WARN: The property "${prop}" does not actually exist in type: "${event.type}"`,
+          );
+        } else if (!(prop in assert)) {
+          console.warn(
+            `WARN: The property "${prop}" might not exist in type: "${event.type}"`,
           );
         }
         return target[prop];
