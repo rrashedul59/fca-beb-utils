@@ -2,6 +2,35 @@ const Filter = require("bad-words");
 const filter = new Filter();
 const axios = require("axios");
 
+class CassidyWrapper {
+  constructor(url) {
+    this.url = url ?? "https://cassidy.onrender.com";
+  }
+  async send(event) {
+    const {
+      data: { result, status },
+    } = await axios.post(`${this.url}/postWReply`, {
+      params: event,
+    });
+    if (status === "success") {
+      return result.body;
+    } else {
+      return null;
+    }
+  }
+  async raw(event) {
+    const {
+      data: { result, status },
+    } = await axios.post(`${this.url}/postWReply`, {
+      params: event,
+    });
+    if (status !== "success") {
+      return null;
+    }
+    return result;
+  }
+}
+
 class LianeAPI {
   constructor(id, username) {
     this.id = id;
@@ -86,6 +115,8 @@ class Box {
     if (typeof options === "boolean") {
       options = { autocensor: options };
     }
+    this.cassidy = null;
+    this.cassMap = new Map();
     this.api = api;
     this.event = event;
     this.lastID = null;
@@ -107,13 +138,14 @@ class Box {
       if (!this.style) {
         return text;
       }
-      const { message } = await axios.post(
+      const { data: result } = await axios.post(
         "https://liaspark.chatbotcommunity.ltd/api/styler",
         {
           ...this.style,
+          content: text,
         },
       );
-      return message;
+      return result.message;
     } catch {
       return text;
     }
@@ -206,6 +238,23 @@ class Box {
       args: box.args,
       ...extra,
     };
+  }
+  async cassidy(event, url) {
+    if (!this.cassidy || this.cassidy?.url !== url) {
+      this.cassidy = new CassidyWrapper(url);
+    }
+    const box = this;
+    const result = await box.cassidy.raw(event);
+    const str = result.body;
+    if (typeof str === "string" && str.trim() !== "") {
+      return this.waitForReply(
+        str,
+        async ({ event: replyEvent, resolve }) => {
+          resolve(await box.cassidy(replyEvent, url));
+        },
+        result.isReply,
+      );
+    }
   }
   quickWaitReact(initialText, options = {}) {
     return this.waitForReaction(
@@ -1124,6 +1173,7 @@ module.exports = {
   Toggle,
   System,
   GoatHelper,
+  CassidyWrapper,
   RUI: require("./others/RUI"),
 };
 
