@@ -79,6 +79,86 @@ class LockSystem {
 }
 global.LockSystem.class = LockSystem;
 
+class ScriptLoader {
+  constructor(context, global2 = global) {
+    this.context = context;
+    this.global = global2;
+  }
+  mainControl({ fileName, type = "cmd", isUnload = false }) {
+    fileName = this.parseFileName(fileName);
+    const {
+      api,
+      threadModel,
+      userModel,
+      globalModel,
+      threadsData,
+      usersData,
+      dashBoardData,
+      globalData,
+      getLang,
+      dashBoardModel,
+    } = this.context;
+    const { utils } = this.global;
+    const { log } = utils;
+    const { configCommands } = this.global.GoatBot;
+    const infoLoad = !isUnload
+      ? utils.loadScripts(
+          type,
+          fileName,
+          log,
+          configCommands,
+          api,
+          threadModel,
+          userModel,
+          dashBoardModel,
+          globalModel,
+          threadsData,
+          usersData,
+          dashBoardData,
+          globalData,
+          getLang,
+        )
+      : utils.unloadScripts(type, fileName, configCommands, getLang);
+    if (infoLoad.status !== "success") {
+      throw infoLoad.error;
+    } else {
+      return infoLoad;
+    }
+  }
+  loadCommand(fileName) {
+    return this.mainControl({ type: "cmd", fileName });
+  }
+  unloadCommand(fileName) {
+    return this.mainControl({ type: "cmd", fileName, isUnload: true });
+  }
+  loadCommands(...fileNames) {
+    return fileNames.map((fileName) => this.loadCommand(fileName));
+  }
+  unloadCommands(...fileNames) {
+    return fileNames.map((fileName) => this.unloadCommand(fileName));
+  }
+
+  loadEvent(fileName) {
+    return this.mainControl({ type: "events", fileName });
+  }
+  unloadEvent(fileName) {
+    return this.mainControl({ type: "events", fileName, isUnload: true });
+  }
+  loadEvents(...fileNames) {
+    return fileNames.map((fileName) => this.loadEvent(fileName));
+  }
+  unloadEvents(...fileNames) {
+    return fileNames.map((fileName) => this.unloadEvent(fileName));
+  }
+
+  parseFileName(fileName) {
+    fileName = fileName.replace(".js", "");
+    fileName = fileName.split("/");
+    fileName = fileName[fileName.length - 1];
+    return fileName;
+  }
+}
+
 class GoatWrapper {
   constructor(moduleExports) {
     this.command = moduleExports;
@@ -90,10 +170,7 @@ class GoatWrapper {
 
   static isValid(data) {
     const validKeys = ["config", "onStart"];
-    const invalidKeys = [];
-    return Object.keys(data).every(
-      (key) => validKeys.includes(key) && !invalidKeys.includes(key),
-    );
+    return validKeys.every((key) => key in data);
   }
 
   applyLock(type, key) {
@@ -133,6 +210,31 @@ class GoatWrapper {
     const og = this.command.onStart;
     this.command.onStart = (i) => {
       i.box = new Box(i.api, i.event);
+      return og(i);
+    };
+  }
+  general() {
+    this.applyBox();
+    const { config } = this.command;
+    switch (config.noPrefix) {
+      case undefined:
+        break;
+      case true:
+        this.applyNoPrefix({ allowPrefix: false });
+        break;
+      case false:
+        break;
+      case "both":
+        this.applyNoPrefix({ allowPrefix: true });
+        break;
+      default:
+        break;
+    }
+    if (config.shopPrice) {
+      this.applyLock("shop", config.shopPrice);
+    }
+    const og = this.command.onStart;
+    this.command.onStart = (i) => {
       return og(i);
     };
   }
@@ -238,7 +340,8 @@ async function shopGoatMain(funcMain, context) {
   const { api, event, usersData, commandName, args } = context;
   const box = new Box(api, event);
   try {
-    const { money = 0, shopItems = {} } = await usersData.get(event.senderID);
+    const { money = 0, data = {} } = await usersData.get(event.senderID);
+    const { shopItems = {} } = data;
     const { price = null } = global.ShopSystem.priceList[commandName] ?? {};
     if (price !== null && !(commandName in shopItems)) {
       if (args[0] && args[0].toLowerCase() === "purchase") {
@@ -248,23 +351,27 @@ async function shopGoatMain(funcMain, context) {
             `❌ | The command "${commandName}" requires ${price}$ but you only have ${money}$!`,
           );
         }
-        /*await box.waitForReaction(
+        await box.waitForReaction(
           `⚠️ | Do you want to purchase the command "${commandName}" for ${price}$?\nReact 👍 to this message to confirm`,
-          ({ event: reactionEvent, resolve }) => {
+          ({ event: reactionEvent, resolve, messageInfo }) => {
             if (reactionEvent.userID !== event.senderID) {
               return;
             }
             if (reactionEvent.reaction !== "👍") {
               return;
             }
+            box.edit(`✅ Proceeding...`, messageInfo.messageID);
             resolve();
           },
-        );*/
+        );
         await usersData.set(event.senderID, {
           money: money - price,
-          shopItems: {
-            ...shopItems,
-            [commandName]: true,
+          data: {
+            ...data,
+            shopItems: {
+              ...shopItems,
+              [commandName]: true,
+            },
           },
         });
         box.reply(
