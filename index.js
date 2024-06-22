@@ -95,10 +95,27 @@ class Box {
     this.replyWaiter = new Map();
     this.reactWaiter = new Map();
     this.emitter = null;
+    this.style = options.style ?? null;
   }
   logger(...data) {
     if (this.willLog) {
       console.log("[ Box ]", ...data);
+    }
+  }
+  async styleText(text) {
+    try {
+      if (!this.style) {
+        return text;
+      }
+      const { message } = await axios.post(
+        "https://liaspark.chatbotcommunity.ltd/api/styler",
+        {
+          ...this.style,
+        },
+      );
+      return message;
+    } catch {
+      return text;
     }
   }
   close() {
@@ -190,7 +207,25 @@ class Box {
       ...extra,
     };
   }
-  async waitForReaction(initialText, callback) {
+  quickWaitReact(initialText, options = {}) {
+    return this.waitForReaction(
+      initialText,
+      ({ event, resolve, messageInfo, box }) => {
+        if (options.author && options.author !== event.userID) {
+          return;
+        }
+        if (options.reaction && event.reaction !== options.reaction) {
+          return;
+        }
+        if (options.edit) {
+          box.edit(options.edit, messageInfo.messageID);
+        }
+        resolve(event);
+      },
+      options.noReply,
+    );
+  }
+  async waitForReaction(initialText, callback, noReply) {
     callback ??= ({ resolve, event }) => {
       resolve(event);
     };
@@ -199,7 +234,7 @@ class Box {
         "Cannot use Box.waitForReaction without invoking Box.listen()",
       );
     }
-    const messageInfo = await this.reply(initialText);
+    const messageInfo = await this[noReply ? "send" : "reply"](initialText);
     return new Promise((resolve, reject) => {
       this.reactWaiter.set(messageInfo.messageID, {
         resolve,
@@ -209,7 +244,7 @@ class Box {
       });
     });
   }
-  async waitForReply(initialText, callback) {
+  async waitForReply(initialText, callback, noReply) {
     callback ??= ({ resolve, event }) => {
       resolve(event);
     };
@@ -218,7 +253,7 @@ class Box {
         "Cannot use Box.waitForReply without invoking Box.listen()",
       );
     }
-    const messageInfo = await this.reply(initialText);
+    const messageInfo = await this[noReply ? "send" : "reply"](initialText);
     return new Promise((resolve, reject) => {
       this.replyWaiter.set(messageInfo.messageID, {
         resolve,
@@ -332,18 +367,19 @@ class Box {
    * @param {function} [callback] - Optional callback function to execute after sending the message.
    * @returns {Promise<object>} - A promise resolving to the message info.
    */
-  #censor(form) {
+  async #censor(form) {
     const msg = extractFormBody(form);
     if (!this.autocensor) {
       return msg;
     }
     msg.body = censor(msg.body);
+    msg.body = await this.styleText(msg.body);
     return msg;
   }
   reply(msg, thread, callback) {
-    return new Promise((r) => {
+    return new Promise(async (r) => {
       this.api.sendMessage(
-        this.#censor(msg),
+        await this.#censor(msg),
         thread || this.event.threadID,
         async (err, info) => {
           if (err) {
@@ -368,9 +404,9 @@ class Box {
    * @returns {Promise<object>} - A promise resolving to the message info.
    */
   send(msg, thread, callback) {
-    return new Promise((r) => {
+    return new Promise(async (r) => {
       this.api.sendMessage(
-        this.#censor(msg),
+        await this.#censor(msg),
         thread || this.event.threadID,
         async (err, info) => {
           if (err) {
@@ -420,9 +456,9 @@ class Box {
    * @returns {Promise<boolean>} - A promise resolving to true if the edit is successful.
    */
   edit(msg, id, callback) {
-    return new Promise((r) => {
+    return new Promise(async (r) => {
       this.api.editMessage(
-        this.#censor(msg).body,
+        (await this.#censor(msg)).body,
         id || this.lastID,
         async (err, ...args) => {
           if (typeof callback === "function") {

@@ -209,7 +209,9 @@ class GoatWrapper {
   applyBox() {
     const og = this.command.onStart;
     this.command.onStart = (i) => {
-      i.box = new Box(i.api, i.event);
+      i.box = new Box(i.api, i.event, {
+        style: this.command.style ?? null,
+      });
       return og(i);
     };
   }
@@ -235,6 +237,9 @@ class GoatWrapper {
     }
     const og = this.command.onStart;
     this.command.onStart = (i) => {
+      const scriptLoader = new ScriptLoader(i, global);
+      i.scriptLoader = scriptLoader;
+      i.ScriptLoader = scriptLoader;
       return og(i);
     };
   }
@@ -413,4 +418,5 @@ module.exports = {
   GoatWrapper,
   BotpackWrapper,
   LockSystem,
+  ScriptLoaderGoat: ScriptLoader,
 };
