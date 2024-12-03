@@ -1,4 +1,4 @@
-const loginUno = require("fca-unofficial");
+const loginUno = require("fca-priyansh");
 let std = {};
 const { Box, censor: censorer } = require("../index");
 const path = require("path");
